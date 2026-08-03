@@ -20,17 +20,20 @@ complytime/org-infra#430 (token consumption controls).
 
 ### T2: Network exfiltration via model tool use
 
-**Risk**: There is no runtime enforcement preventing the model from
-accessing the network. The model runs with full host network
-authority. A prompt injection could cause it to exfiltrate private
-repo data via shell commands, web fetches, or MCP servers.
+**Risk**: A prompt injection could cause the model to exfiltrate
+private repo data via shell commands, web fetches, or MCP servers.
 
-**Mitigations in place**: Prompt instructions prohibit shell/network
-use (defense-in-depth only, not enforcement).
+**Mitigations in place**:
+- `OPENCODE_CONFIG_CONTENT` permission config denies bash, edit,
+  webfetch, websearch, skill at the OpenCode runtime level
+  (hard enforcement via the permission system)
+- `--pure` flag prevents external MCP plugins from loading
+- Agent frontmatter (`permission: bash: deny, edit: deny,
+  webfetch: deny`) provides defense-in-depth at the agent level
+- Prompt instructions prohibit shell/network use (soft boundary)
 
-**Tracked in**: unbound-force/unbound-force#337 (OPENCODE_PERMISSION
-sandbox), complytime/org-infra#429 Phase 2 (harden-runner egress
-block).
+**Tracked in**: complytime/org-infra#429 Phase 2 (harden-runner
+egress block — network-level enforcement, independent of OpenCode).
 
 ### T3: Workflow file tampering
 
@@ -80,7 +83,8 @@ membership or collaborator status.
 **Residual risk**: Low. Requires a compromised org member account AND
 a successful prompt injection through the defensive preamble. The
 blast radius is limited to the review output — the model cannot
-execute commands (once OPENCODE_PERMISSION is enforced, #337).
+execute commands (the `OPENCODE_CONFIG_CONTENT` permission config
+enforces this at the OpenCode runtime level).
 
 ### A3: Secrets in process environment
 
@@ -103,25 +107,28 @@ output — comment fallback" in ~3s).
 | Approach | Security | Feasibility | Status |
 |----------|----------|-------------|--------|
 | Unset `GOOGLE_APPLICATION_CREDENTIALS` | Breaks auth | Not viable | Rejected |
-| `OPENCODE_PERMISSION` sandbox (#337) | Denies bash/shell/mcp tools, blocks `env`/`printenv` | Depends on OpenCode feature | Tracked |
+| `OPENCODE_CONFIG_CONTENT` permission config | Denies bash/edit/webfetch/websearch/skill at runtime | Env var, merged with provider config | **Implemented** |
+| `--pure` flag (no external plugins) | Reduces tool surface | CLI flag | **Implemented** |
+| Agent frontmatter (`permission:`) | Denies edit/bash/webfetch per agent | Already in place | **Implemented** |
 | Authenticated reverse proxy | Best — credentials never in OpenCode's process | Heavy to implement for CI | Deferred |
 | Move credential file outside workspace | Marginal — SDK reads file on behalf of process | Fragile, doesn't change threat model | Not pursued |
-| `--pure` flag (no external plugins) | Reduces tool surface | Depends on OpenCode feature | Tracked with #337 |
 
-**Mitigations in place**: Prompt instructions prohibit shell and
-environment access (defense-in-depth, not enforcement). Vertex AI
-WIF tokens are short-lived (1 hour) and scoped to the specific
-project. `GH_TOKEN` is unset so GitHub API access is removed.
+**Mitigations in place**:
+- `OPENCODE_CONFIG_CONTENT` permission config blocks all tool paths
+  to process environment (`env`, `printenv`, arbitrary bash) at the
+  OpenCode runtime level (bash: deny)
+- `--pure` prevents external MCP plugins from bypassing permission
+  restrictions
+- `GH_TOKEN` is unset so GitHub API access is removed
+- Vertex AI WIF tokens are short-lived (1 hour) and scoped to the
+  specific project
+- Prompt instructions prohibit shell and environment access
+  (defense-in-depth, soft boundary)
 
-**Tracked in**: unbound-force/unbound-force#337
-(OPENCODE_PERMISSION sandbox).
-
-**Residual risk**: Low. Without OPENCODE_PERMISSION, the model
-theoretically has the credential in its process environment, but
-has no tool path to read it (no bash, no `env`, no `printenv`).
-A vulnerability in OpenCode's tool enforcement could bypass this,
-but that would be an OpenCode bug. Once #337 is implemented, the
-tool surface is formally denied rather than prompt-instructed.
+**Residual risk**: Low. The model has no tool path to read process
+environment — bash is denied at the runtime level, not just by
+prompt instruction. A vulnerability in OpenCode's permission
+enforcement could bypass this, but that would be an OpenCode bug.
 
 ### A4: Artifact integrity between workflows
 
