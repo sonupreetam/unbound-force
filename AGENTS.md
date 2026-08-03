@@ -69,6 +69,11 @@ unbound-force/
 │   ├── skill/                        # Swarm skills packages
 │   ├── skills/                       # Additional skills packages
 │   └── uf/packs/                     # Convention packs
+├── council-review-action/             # AI code review composite GitHub Action
+│   ├── action.yml                    # Composite action definition
+│   ├── scripts/                      # Pipeline scripts (diff, prompt, review, parse)
+│   ├── test/                         # Pipeline tests (60 assertions)
+│   └── docs/                         # Decisions, security risks, testing strategy
 ├── cmd/unbound-force/                # Cobra CLI entry point
 ├── cmd/mutimind/                     # Muti-Mind backend CLI
 ├── cmd/mxf/                          # Mx F backend CLI
@@ -91,6 +96,7 @@ unbound-force/
 │   ├── sync/                         # GitHub issue sync
 │   └── textutil/                     # Shared text formatting helpers
 ├── docs/                             # User-facing documentation
+│   └── decisions/                    # Architecture Decision Records (ADRs)
 ├── specs/                            # Architectural specs (001-035)
 ├── openspec/                         # OpenSpec tactical workflow
 ├── schemas/                          # JSON Schema registry
